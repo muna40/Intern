@@ -1,0 +1,38 @@
+from django.http import HttpResponse
+import base64
+import hmac
+import hashlib
+
+def handle_payment_response(request):
+    # Decode the Base64 encoded response
+    response_encoded = request.GET.get('response')
+    response = base64.b64decode(response_encoded).decode()
+
+    # Parse response fields
+    response_params = dict(item.split('=') for item in response.split('&'))
+    
+    # Validate the response signature
+    secret_key = "8gBm/:&EnhH.1/q("
+    signature_params = {
+        'transaction_code': response_params['transaction_code'],
+        'status': response_params['status'],
+        'total_amount': response_params['total_amount'],
+        'transaction_uuid': response_params['transaction_uuid'],
+        'product_code': response_params['product_code'],
+        'signed_field_names': 'transaction_code,status,total_amount,transaction_uuid,product_code,signed_field_names'
+    }
+    signature = generate_signature(secret_key, signature_params)
+    
+    if signature == response_params['signature']:
+        return HttpResponse(f"Payment successful: {response_params}")
+    else:
+        return HttpResponse("Payment verification failed.")
+
+def generate_signature(secret_key, params):
+    params_string = '&'.join([f"{key}={params[key]}" for key in params['signed_field_names'].split(',')])
+    signature = hmac.new(
+        secret_key.encode(),
+        params_string.encode(),
+        hashlib.sha256
+    ).digest()
+    return base64.b64encode(signature).decode()

@@ -1,0 +1,102 @@
+{% extends 'app/base.html' %}
+{% load static %}
+{% block title %}Buy Now{% endblock title %}
+
+{% block main-content %}
+<div class="container">
+    {% if messages %}
+        {% for msg in messages %}
+            <div class="alert alert-danger" role="alert">
+                {{ msg }}
+            </div>
+        {% endfor %}
+    {% endif %}
+    
+    <div class="row mt-5">
+        <div class="col-sm-6">
+            <h4>Order Summary</h4>
+            <hr>
+            {% for item in cart_items %}
+                <div class="card mb-2">
+                    <div class="card-body">
+                        <h5>Product: {{ item.product.title }}</h5>
+                        <p>Quantity: {{ item.quantity }}</p>
+                        <p class="fw-bold">Price: Rs. {{ item.product.discounted_price }}</p>
+                    </div>
+                </div>
+            {% endfor %}
+            <p class="fw-bold">Total Cost + Rs. 40 = Rs. {{totalamount}}</p>
+            <small>
+                <p>Terms and Conditions: All orders of goods or services by the buyer will be subject to these general terms and conditions.</p>
+                This contract is governed by Nepali law and establishes a binding agreement between Neel Products Limited 
+                ("Seller") and the party placing the order ("Buyer"). It outlines terms for the sale of goods and services, including payment, delivery, 
+                liability, and intellectual property rights. The Seller retains ownership of goods until full payment is made, and the Buyer is responsible 
+                for health and safety compliance regarding the goods. The contract includes provisions for force majeure, notification of delivery issues, 
+                and arbitration in England for any disputes. Variations or assignments require written consent.
+            </small>
+        </div>
+        
+        <div class="col-sm-4 offset-sm-1">
+            <h4>Select Shipping Address</h4>
+            <hr>
+            <form method="post" action="{% url 'checkout' %}" id="checkout-form">
+                {% csrf_token %}
+                
+                {% for ad in add %}
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5>{{ ad.name }}</h5>
+                            <p>Mobile: {{ ad.mobile }}</p>
+                            <p>{{ ad.locality }}, {{ ad.city }}, {{ ad.state }} - {{ ad.zipcode }}</p>
+                        </div>
+                    </div>
+                    <div class="form-check mt-2 mb-5">
+                        <input class="form-check-input" type="radio" name="custid" id="custadd{{ forloop.counter }}" value="{{ ad.id }}">
+                        <label class="form-check-label fw-bold" for="custadd{{ forloop.counter }}">
+                            Address {{ forloop.counter }}
+                        </label>
+                    </div>
+                {% endfor %}
+                    
+                <div class="text-end">
+                    <div id="paypal-button-container"></div>
+                </div>
+                
+            </form>
+        </div>
+    </div>
+</div>
+<br><br><br>
+{% endblock main-content %}
+{% block payment_gateway %}
+
+    <script src="https://www.paypal.com/sdk/js?client-id=AfCsj9WUe6tfyYM2BhZ_m6244_U4fGG7A6SuYuNfyQzpdOLOyjEI9TE7SrocVI9Fe7f7gunkfNDB5gr3=USD"></script>
+
+    <script>
+        // Render the PayPal button into #paypal-button-container
+        paypal.Buttons({
+
+                // Set up the transaction
+                createOrder: function(data, actions) {
+                    return actions.order.create({
+                        purchase_units: [{
+                        amount: {
+                            value: '{{ totalamount }}'
+                        }
+                        }]
+                    });
+
+                },
+
+                // Finalize the transaction
+                onApprove: function(data, actions) {
+                    return actions.order.capture().then(function(details) {
+                    // Show a success message to the buyer
+                    alert('Transaction completed by ' + details.payer.name.given_name + '!');
+
+                    });
+                }
+
+        }).render('#paypal-button-container');
+    </script>
+{% endblock payment_gateway %}
